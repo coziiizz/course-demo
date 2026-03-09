@@ -128,7 +128,7 @@ def sgd(params, lr, batch_size):
     with torch.no_grad():
         for param in params:
             # 对每个参数按照其梯度以及学习率进行更新。
-            param -= lr * param.grad / batch_size
+            param -= lr * param.grad
             # 我们希望根据新的数据重新计算梯度，而不是累加之前的梯度。
             param.grad.zero_()
 ```
