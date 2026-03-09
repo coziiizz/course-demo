@@ -151,7 +151,7 @@ def evaluate_accuracy(dataloader, net):
 
 
 ```python
-num_epochs = 5 
+num_epochs = 10 
 lr = 0.1
 
 def train(net, train_iter, test_iter, loss, num_epochs, batch_size, params=None, lr=None, optimizer=None):
@@ -287,7 +287,7 @@ def train(net, train_iter, test_iter, loss, num_epochs, optimizer):
               % (epoch + 1, train_l_sum / n, train_acc_sum / n, test_acc))
 
 
-num_epochs = 5
+num_epochs = 10
 num_inputs, num_outputs, num_hiddens = 784, 10, 256
 net = MLP(num_inputs, num_outputs, num_hiddens)
 loss = nn.CrossEntropyLoss()
