@@ -88,8 +88,8 @@ class SimpleCNN(nn.Module):
 ```bash
 def train(model, train_loader, test_loader, device):
     num_epochs = 15
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    # TODO: 定义损失函数，这里使用交叉熵损失
+    # TODO: 定义优化器，使用 Adam 优化器，并设置学习率为 0.001
 
     for epoch in range(num_epochs):
         model.train()
@@ -205,8 +205,15 @@ Linear output shape:         torch.Size([1, 84])
 Sigmoid output shape:        torch.Size([1, 84])
 Linear output shape:         torch.Size([1, 10])
 ```
-TODO: 结合图片中所给出的LeNet以及给出的nn.Sequential，将前文给出的net结构以类的方式实现，并实现在
-MNIST数据集上的分类
+TODO: 结合给出的 LeNet 示例，实现两个卷积神经网络模型：
+
+​    1.  将前文给出的 net 结构改写为类的形式，并对部分参数进行调整，使其适用于 CIFAR-10 数据集；
+
+​    2.  在此基础上进一步改进网络结构，将平均池化替换为最大池化，将 Sigmoid 激活函数替换为 ReLU，并在 CIFAR-10 数据集上完成图像分类任务（注意输入通道数为 3，图像尺寸为 32×32）。
+
+
+
+最后，对这两个模型分别进行训练，并比较它们的分类效果。
 
 ## 4. 批量规范化
 训练深层神经网络是十分困难的，特别是在较短的时间内使他们收敛更加棘手。 
@@ -295,8 +302,10 @@ def batch_norm(X, gamma, beta, moving_mean, moving_var, eps, momentum):
         else:
             # 使用二维卷积层的情况，计算通道维上（axis=1）的均值和方差。
             # 这里我们需要保持X的形状以便后面可以做广播运算
-            mean = X.mean(dim=(0, 2, 3), keepdim=True)
-            var = ((X - mean) ** 2).mean(dim=(0, 2, 3), keepdim=True)
+            # TODO: 卷积层情况下，对每个通道在 batch、高度和宽度维度上计算均值。
+            # 例如 X.shape = (32, 6, 28, 28) 时，mean.shape = (1, 6, 1, 1)。
+            # TODO: 卷积层情况下，对每个通道在 batch、高度和宽度维度上计算方差。
+            
         # 训练模式下，用当前的均值和方差做标准化
         X_hat = (X - mean) / torch.sqrt(var + eps)
         # 更新移动平均的均值和方差
@@ -363,5 +372,4 @@ net = nn.Sequential(
     nn.Linear(120, 84), nn.BatchNorm1d(84), nn.Sigmoid(),
     nn.Linear(84, 10))
 ```
-TODO: 使用上述定义的包含BatchNorm的LeNet网络，
-实现在MNIST数据集上的图像分类(直接使用nn.Sequential或者自定义类均可)
+TODO: 练习：参考上述定义的包含 BatchNorm 的 LeNet 网络，实现在 CIFAR-10 数据集上的图像分类（使用 nn.Sequential）。
