@@ -64,7 +64,7 @@ tokenizer = AutoTokenizer.from_pretrained(model_name)
 
 # **3. 处理数据**
 class AGNewsDataset(Dataset):
-    def __init__(self, texts, labels, tokenizer, max_length=50):
+    def __init__(self, texts, labels, tokenizer, max_length=64):
         self.texts = texts
         self.labels = labels
         self.tokenizer = tokenizer
@@ -79,8 +79,11 @@ class AGNewsDataset(Dataset):
         encoding = self.tokenizer(
             text, truncation=True, padding="max_length", max_length=self.max_length, return_tensors="pt"
         )
-        input_ids = encoding["input_ids"].squeeze(0)
-        return input_ids, torch.tensor(label, dtype=torch.long)
+        return {
+            "input_ids": encoding["input_ids"].squeeze(0),
+            "attention_mask": encoding["attention_mask"].squeeze(0),
+            "labels": torch.tensor(label, dtype=torch.long),
+        }
 
 vocab = tokenizer.get_vocab()
 pad_idx = tokenizer.pad_token_id
@@ -92,6 +95,12 @@ test_dataset = AGNewsDataset(test_texts, test_labels, tokenizer)
 train_dataloader = DataLoader(train_dataset, batch_size=16, shuffle=True)
 test_dataloader = DataLoader(test_dataset, batch_size=16, shuffle=False)
 ```
+
+!!! note "实验要求"
+    1. 训练和测试时需要显式传入 `attention_mask`，不能再通过 embedding 是否全零来推断 padding 位置。
+    2. 需要比较 `mean pooling` 与 `max pooling` 两种聚合方式。
+    3. 需要展示一层注意力权重的输出形状或可视化结果。
+    4. 选做：在 `num_layers=2` 时比较 `n_heads=2` 与 `n_heads=4` 的模型表现。
 
 ### 位置编码器
 在 Transformer 模型中，Self-Attention 是无序的，它无法感知输入序列的「位置信息」，即每个 token 在序列中的先后顺序。
@@ -189,7 +198,7 @@ class PositionalEncoding(nn.Module):
         return x
 ```
 !!! question "思考题"
-    思考题1：为什么需要对偶数和奇数维度分别使用 sin 和 cos？
+    思考题1：为什么 padding mask 不能在加完位置编码后，再通过“某个位置的向量是否全零”来判断？
 
 ### Multi-Head Self-Attention 模块
 
@@ -212,7 +221,7 @@ class MultiHeadSelfAttention(nn.Module):
         # 输出层，将多头的结果重新映射回 d_model 维度
         self.fc = nn.Linear(d_model, d_model)
 
-    def forward(self, x, mask=None):
+    def forward(self, x, mask=None, return_attn=False):
         # 输入 x: (batch_size, seq_len, d_model)
         batch_size, seq_len, d_model = x.size()
 
@@ -249,11 +258,15 @@ class MultiHeadSelfAttention(nn.Module):
         context = context.transpose(1, 2).contiguous().view(batch_size, seq_len, d_model)
 
         # 通过输出层，再映射回原始 d_model 维度
-        return self.fc(context)
+        output = self.fc(context)
+
+        if return_attn:
+            return output, attn
+        return output
 ```
 
 !!! question "思考题"
-    思考题2：在 Multi-Head Self-Attention 机制中，为什么我们需要使用多个 attention head？
+    思考题2：为什么我们需要使用多个 attention head？
 
     思考题3：为什么要用缩放因子 sqrt(d_k)？
 
@@ -285,11 +298,16 @@ class TransformerEncoderLayer(nn.Module):
         # 第二层 LayerNorm，作用在前馈网络的残差连接之后
         self.norm2 = nn.LayerNorm(d_model)
 
-    def forward(self, x, mask=None):
+    def forward(self, x, mask=None, return_attn=False):
         # ------------------ 自注意力块 ------------------ #
 
         # TODO 1: 计算多头自注意力输出 x2
-        x2 = ...
+        # 要求: 当 return_attn=True 时，同时接收注意力权重 attn
+        if return_attn:
+            x2, attn = ...
+        else:
+            x2 = ...
+            attn = None
 
         # TODO 2: 残差连接 + 第一层 LayerNorm
         x = ...
@@ -302,7 +320,8 @@ class TransformerEncoderLayer(nn.Module):
         # TODO 4: 残差连接 + 第二层 LayerNorm
         x = ...
  
-        
+        if return_attn:
+            return x, attn
         return x
 ```
 
@@ -311,11 +330,11 @@ class TransformerEncoderLayer(nn.Module):
 
 ## **2. 基于 Transformer Encoder 的文本分类器**
 
-下面，我们实现一个基于 Transformer Encoder 的文本分类器，通过 embedding、位置编码、多层 encoder 处理输入序列，最终使用 mean pooling 和全连接层完成文本的多类别分类任务。
+下面，我们实现一个基于 Transformer Encoder 的文本分类器，通过 embedding、位置编码、多层 encoder 处理输入序列，最终使用可切换的 pooling 和全连接层完成文本的多类别分类任务。
 
 ```python
 class TransformerEncoderClassifier(nn.Module):
-    def __init__(self, vocab_size, d_model=128, n_heads=4, d_ff=256, num_layers=2, num_classes=4):
+    def __init__(self, vocab_size, d_model=128, n_heads=4, d_ff=256, num_layers=2, num_classes=4, pooling="mean"):
         super().__init__()
 
         # 1. 定义词嵌入层（Embedding），输入为词表大小，输出为 d_model 维
@@ -330,55 +349,72 @@ class TransformerEncoderClassifier(nn.Module):
 
         # 4. 定义输出分类层，将 encoder 最终输出映射到 num_classes 维度
         self.fc = nn.Linear(d_model, num_classes)
+        self.pooling = pooling
 
-    def forward(self, x):
-        # x shape: (batch_size, seq_len)，输入为单词 ID 序列
+    def forward(self, input_ids, attention_mask=None, return_attn=False):
+        # input_ids shape: (batch_size, seq_len)，输入为单词 ID 序列
 
         # 1. 输入 token ID 通过 Embedding，转成 (batch_size, seq_len, d_model) 的 dense 向量
-        x = self.embedding(x)  # (batch_size, seq_len, d_model)
+        x = self.embedding(input_ids)  # (batch_size, seq_len, d_model)
 
         # 2. 加入位置编码，增强位置感知能力
         x = self.pos_encoder(x)
 
         # 3. 创建 padding mask，shape: (batch_size, 1, 1, seq_len)
-        # mask = True 代表有效 token，False 代表 padding 位置
-        pad_mask = (x.sum(-1) != 0).unsqueeze(1).unsqueeze(2)  # (batch_size, 1, 1, seq_len)
+        # mask = 1 代表有效 token，0 代表 padding 位置
+        if attention_mask is None:
+            attention_mask = (input_ids != pad_idx).long()
+        pad_mask = attention_mask.unsqueeze(1).unsqueeze(2)
 
         # 4. 依次通过多层 Encoder，每一层都会使用 pad_mask
-        for layer in self.layers:
-            x = layer(x, pad_mask)
+        last_attn = None
+        for idx, layer in enumerate(self.layers):
+            if return_attn and idx == len(self.layers) - 1:
+                x, last_attn = layer(x, pad_mask, return_attn=True)
+            else:
+                x = layer(x, pad_mask)
 
-        # 5. 对时间维度（seq_len）做 mean pooling，聚合所有位置的特征
-        out = x.mean(dim=1)  # mean pooling on seq_len
+        # 5. 对时间维度（seq_len）做 pooling，聚合所有位置的特征
+        token_mask = attention_mask.unsqueeze(-1)
+        if self.pooling == "mean":
+            # TODO 1: 只对有效 token 做平均池化
+            out = ...
+        elif self.pooling == "max":
+            # TODO 2: 先屏蔽 padding，再做最大池化
+            out = ...
+        else:
+            raise ValueError(f"Unsupported pooling: {self.pooling}")
 
         # 6. 分类输出，映射到类别数
-        return self.fc(out)
+        logits = self.fc(out)
+        if return_attn:
+            return logits, last_attn
+        return logits
 ```
 
 !!! question "思考题"
-    思考题5：为什么在 TransformerEncoderClassifier 中，通常会在 Encoder 的输出上做 mean pooling（对 seq_len 取平均）？除了 mean pooling，你能否想到其他可以替代的 pooling 或特征聚合方式？并简要分析它们的优缺点。
+    思考题5：`mean pooling` 和 `max pooling` 分别更容易保留哪类信息？在文本分类任务中它们各自可能有什么优缺点？
 
 下面是模型的训练和测试:
 
 ```python
-# 使用 split 进行分词
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = TransformerEncoderClassifier(len(vocab)).to(device)
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
 criterion = nn.CrossEntropyLoss()
 ```
 
 模型训练部分：
 
 ```python
-def train_epoch():
+def train_epoch(model, optimizer):
     model.train()
     total_loss = 0
     loop = tqdm(train_dataloader, desc="Training", leave=False)
-    for text, labels in loop:
-        text, labels = text.to(device), labels.to(device)
+    for batch in loop:
+        input_ids = batch["input_ids"].to(device)
+        attention_mask = batch["attention_mask"].to(device)
+        labels = batch["labels"].to(device)
         optimizer.zero_grad()
-        output = model(text)
+        output = model(input_ids, attention_mask=attention_mask)
         loss = criterion(output, labels)
         loss.backward()
         optimizer.step()
@@ -392,26 +428,59 @@ def train_epoch():
 模型测试部分：
 
 ```python
-def evaluate():
+def evaluate(model):
     model.eval()
     correct = 0
     total = 0
     loop = tqdm(test_dataloader, desc="Evaluating", leave=False)
     with torch.no_grad():
-        for text, labels in loop:
-            text, labels = text.to(device), labels.to(device)
-            output = model(text)
+        for batch in loop:
+            input_ids = batch["input_ids"].to(device)
+            attention_mask = batch["attention_mask"].to(device)
+            labels = batch["labels"].to(device)
+            output = model(input_ids, attention_mask=attention_mask)
             preds = output.argmax(dim=1)
             correct += (preds == labels).sum().item()
             total += labels.size(0)
     return correct / total
 
+experiment_settings = [
+    {"pooling": "mean", "n_heads": 4},
+    {"pooling": "max", "n_heads": 4},
+]
 
-for epoch in range(1, 6):
-    loss = train_epoch()
-    acc = evaluate()
-    print(f'Epoch {epoch}: Loss = {loss:.4f}, Test Acc = {acc:.4f}')
+results = []
+for config in experiment_settings:
+    model = TransformerEncoderClassifier(
+        len(vocab),
+        n_heads=config["n_heads"],
+        num_layers=2,
+        pooling=config["pooling"],
+    ).to(device)
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+
+    for epoch in range(1, 4):
+        loss = train_epoch(model, optimizer)
+        acc = evaluate(model)
+        print(f'{config}, Epoch {epoch}: Loss = {loss:.4f}, Test Acc = {acc:.4f}')
+
+    results.append({"pooling": config["pooling"], "n_heads": config["n_heads"], "acc": acc})
+
+print(results)
+
+# 必做：在完成训练后，任选一个样本，展示最后一层注意力权重的 shape 或可视化结果
+sample_batch = next(iter(test_dataloader))
+sample_input_ids = sample_batch["input_ids"][:1].to(device)
+sample_attention_mask = sample_batch["attention_mask"][:1].to(device)
+logits, attn = model(
+    sample_input_ids,
+    attention_mask=sample_attention_mask,
+    return_attn=True,
+)
+print(attn.shape)
+
+# 选做：固定 pooling 后，再比较 n_heads=2 与 n_heads=4 的差异
 ```
 
 !!! question "思考题"
-    思考题6：Transformer 相比传统的 RNN/CNN，优势在哪里？为什么 Transformer 更适合处理长文本？
+    思考题6：为什么在本实验中，更复杂的设置不一定总能带来更好的结果？请结合 pooling 或 attention head 的实验现象简要分析。
