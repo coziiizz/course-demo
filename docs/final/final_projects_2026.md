@@ -26,3 +26,4 @@
 3. [基于视觉语言模型的零样本视觉文档检索(Visual Document Retrieval, VDR)](./projects_2026/NJUProject_VDR.md)
 4. [推测解码的实现与动态 Draft 深度分析](./projects_2026/SpeculativeDecoding.md)
 5. [多智能体强化学习课程大作业要求](./projects_2026/marl.md)
+6. [扩散模型的加速采样与离散化探索](./projects_2026/NJUProject_Diffusion_Acceleration.md)
