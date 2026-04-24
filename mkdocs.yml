@@ -66,6 +66,7 @@ nav:
       - 测试时自适应（TTA）: "final/projects_2026/NJUProject_TTA.md"
       - 基于视觉语言模型的零样本视觉文档检索(Visual Document Retrieval, VDR): "final/projects_2026/NJUProject_VDR.md"
       - 推测解码的实现与动态 Draft 深度分析: "final/projects_2026/SpeculativeDecoding.md"
+      - 多智能体强化学习: "final/projects_2026/marl.md"
 
 
 markdown_extensions:

@@ -25,3 +25,4 @@
 2. [测试时自适应（TTA）](./projects_2026/NJUProject_TTA.md)
 3. [基于视觉语言模型的零样本视觉文档检索(Visual Document Retrieval, VDR)](./projects_2026/NJUProject_VDR.md)
 4. [推测解码的实现与动态 Draft 深度分析](./projects_2026/SpeculativeDecoding.md)
+5. [多智能体强化学习课程大作业要求](./projects_2026/marl.md)
