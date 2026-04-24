@@ -227,19 +227,16 @@ Coconut 在实验中也分析了新生成 token 数，以衡量 reasoning effici
 
 请至少阅读并参考以下工作：
 
-1. **Training Large Language Models to Reason in a Continuous Latent Space（Coconut）**
-   提出连续潜在推理的基础框架，在 GPT-2 与 GSM8K 等任务上验证 latent reasoning 的可行性。
-
+1. **Training Large Language Models to Reason in a Continuous Latent Space（Coconut）**  
+   提出连续潜在推理的基础框架，在 GPT-2 与 GSM8K 等任务上验证 latent reasoning 的可行性。  
    参考代码：<https://github.com/facebookresearch/coconut>
 
-2. **CODI: Compressing Chain-of-Thought into Continuous Space via Self-Distillation**
-   通过 self-distillation 将显式 CoT 压缩到连续空间中，是 implicit CoT 的重要改进方向。
-
+2. **CODI: Compressing Chain-of-Thought into Continuous Space via Self-Distillation**  
+   通过 self-distillation 将显式 CoT 压缩到连续空间中，是 implicit CoT 的重要改进方向。  
    参考代码：<https://github.com/zhenyi4/codi>
 
-3. **Think Silently, Think Fast: Dynamic Latent Compression of LLM Reasoning Chains（CoLaR）**
-   探索多个 reasoning token 的动态压缩、latent reasoning 的速度控制，以及压缩率与性能之间的平衡。
-
+3. **Think Silently, Think Fast: Dynamic Latent Compression of LLM Reasoning Chains（CoLaR）**  
+   探索多个 reasoning token 的动态压缩、latent reasoning 的速度控制，以及压缩率与性能之间的平衡。  
    参考代码：<https://github.com/xiaomi-research/colar>
 
 ---
