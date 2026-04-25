@@ -68,6 +68,7 @@ nav:
       - 推测解码的实现与动态 Draft 深度分析: "final/projects_2026/SpeculativeDecoding.md"
       - 多智能体强化学习: "final/projects_2026/marl.md"
       - 扩散模型加速: "final/projects_2026/NJUProject_Diffusion_Acceleration.md"
+      - 基于扩散模型的反演与图像编辑: "final/projects_2026/NJUProject_Inversion.md"
 
 
 markdown_extensions:
