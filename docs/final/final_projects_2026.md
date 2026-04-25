@@ -28,3 +28,4 @@
 5. [多智能体强化学习课程大作业要求](./projects_2026/marl.md)
 6. [扩散模型的加速采样与离散化探索](./projects_2026/NJUProject_Diffusion_Acceleration.md)
 7. [基于扩散模型的反演与图像编辑](./projects_2026/NJUProject_Inversion.md)
+8. [长期记忆对话 Agent](./projects_2026/Agent_Memory/NJUProject_Agent_Memory.md)

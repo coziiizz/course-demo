@@ -1,0 +1,16 @@
+name: dl-lab5-check
+channels:
+  - pytorch
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - numpy<2
+  - pytorch
+  - pandas
+  - scikit-learn
+  - tqdm
+  - nbformat
+  - jupyterlab
+  - pip:
+      - transformers>=4.40
