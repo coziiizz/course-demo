@@ -193,5 +193,6 @@ project/
 - PIE-Bench（数据集介绍见下述论文）: *Direct Inversion: Boosting Diffusion-based Editing with 3 Lines of Code*  
   arXiv: https://arxiv.org/abs/2310.01506
 
+如有疑问，联系助教吴海宇：`2365226522@qq.com`，或者在 QQ 群里联系。
 
 
